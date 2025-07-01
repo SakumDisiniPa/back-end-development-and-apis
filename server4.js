@@ -1,5 +1,3 @@
-// ✅ Exercise Tracker API (freeCodeCamp)
-
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -10,7 +8,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Connect to MongoDB
+// Database setup
 mongoose.connect('mongodb://localhost:27017/exercisetracker', {
   useNewUrlParser: true,
   useUnifiedTopology: true
@@ -18,105 +16,161 @@ mongoose.connect('mongodb://localhost:27017/exercisetracker', {
 
 // User Schema
 const userSchema = new mongoose.Schema({
-  username: { type: String, required: true }
+  username: { type: String, required: true, unique: true }
 });
+
 const User = mongoose.model('User', userSchema);
 
 // Exercise Schema
 const exerciseSchema = new mongoose.Schema({
-  userId: String,
-  description: String,
-  duration: Number,
-  date: Date
+  userId: { type: String, required: true },
+  description: { type: String, required: true },
+  duration: { type: Number, required: true },
+  date: { type: Date, default: Date.now }
 });
+
 const Exercise = mongoose.model('Exercise', exerciseSchema);
 
-// POST /api/users
+// Create new user
 app.post('/api/users', async (req, res) => {
   const { username } = req.body;
+
   try {
     const user = new User({ username });
     await user.save();
     res.json({ username: user.username, _id: user._id });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to create user' });
+    res.status(400).json({ error: 'Username already taken' });
   }
 });
 
-// GET /api/users
+// Get all users
 app.get('/api/users', async (req, res) => {
-  const users = await User.find({}, 'username _id');
-  res.json(users);
+  try {
+    const users = await User.find({}, 'username _id');
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
-// POST /api/users/:_id/exercises
+// Add exercise
 app.post('/api/users/:_id/exercises', async (req, res) => {
   const { _id } = req.params;
   let { description, duration, date } = req.body;
-  if (!date) date = new Date();
-  else date = new Date(date);
 
   try {
+    // Validate user exists
     const user = await User.findById(_id);
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
 
+    // Validate exercise data
+    if (!description || !duration) {
+      return res.status(400).json({ error: 'Description and duration are required' });
+    }
+
+    // Parse date or use current date
+    const exerciseDate = date ? new Date(date) : new Date();
+
+    // Create exercise
     const exercise = new Exercise({
       userId: _id,
       description,
       duration: parseInt(duration),
-      date
+      date: exerciseDate
     });
+
     await exercise.save();
 
+    // Return user with exercise data
     res.json({
       _id: user._id,
       username: user.username,
-      description,
-      duration: parseInt(duration),
-      date: date.toDateString()
+      description: exercise.description,
+      duration: exercise.duration,
+      date: exercise.date.toDateString()
     });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to save exercise' });
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
-// GET /api/users/:_id/logs
+// Get exercise log 
 app.get('/api/users/:_id/logs', async (req, res) => {
   const { _id } = req.params;
   const { from, to, limit } = req.query;
 
   try {
+    // Cari user terlebih dahulu
     const user = await User.findById(_id);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-
-    const filter = { userId: _id };
-    if (from || to) {
-      filter.date = {};
-      if (from) filter.date.$gte = new Date(from);
-      if (to) filter.date.$lte = new Date(to);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
     }
 
-    let query = Exercise.find(filter).lean();
-    if (limit) query = query.limit(parseInt(limit));
+    // Buat query untuk exercise
+    let exerciseQuery = { userId: _id };
+    
+    // Filter tanggal jika ada
+    if (from || to) {
+      exerciseQuery.date = {};
+      if (from) {
+        exerciseQuery.date.$gte = new Date(from);
+      }
+      if (to) {
+        exerciseQuery.date.$lte = new Date(to);
+      }
+    }
 
-    const exercises = await query.exec();
-    const log = exercises.map(e => ({
-      description: e.description,
-      duration: e.duration,
-      date: new Date(e.date).toDateString()
+    // Eksekusi query
+    let exercises = await Exercise.find(exerciseQuery)
+      .select('description duration date -_id')
+      .lean();
+
+    // Apply limit jika ada
+    if (limit) {
+      exercises = exercises.slice(0, parseInt(limit));
+    }
+
+    // Format exercises
+    const log = exercises.map(ex => ({
+      description: ex.description,
+      duration: ex.duration,
+      date: new Date(ex.date).toDateString()
     }));
 
-    res.json({
+    // Buat response object
+    const response = {
       _id: user._id,
       username: user.username,
-      count: log.length,
-      log
-    });
+      count: exercises.length,
+      log: log
+    };
+
+    // Tambahkan from dan to jika ada
+    if (from) {
+      response.from = new Date(from).toDateString();
+    }
+    if (to) {
+      response.to = new Date(to).toDateString();
+    }
+
+    res.json(response);
+
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch logs' });
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
   }
+});
+
+// Homepage
+app.get('/', (req, res) => {
+  res.sendFile(__dirname + '/views/ExerciseTracker.html');
 });
 
 // Start server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
