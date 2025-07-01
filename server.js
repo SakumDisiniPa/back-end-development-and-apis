@@ -11,13 +11,13 @@ function isValidDate(date) {
   return date instanceof Date && !isNaN(date);
 }
 
-// Timestamp API
-app.get('/api/:date?', (req, res) => {
+// API endpoint
+app.get('/api/:date', (req, res) => {
   let dateParam = req.params.date;
   let date;
 
-  // Handle no parameter
-  if (!dateParam) {
+  // Handle empty date parameter
+  if (dateParam === 'current' || !dateParam) {
     date = new Date();
     return res.json({
       unix: date.getTime(),
@@ -25,29 +25,39 @@ app.get('/api/:date?', (req, res) => {
     });
   }
 
-  // Cek apakah timestamp
+  // Check if it's a Unix timestamp (number string)
   if (/^\d+$/.test(dateParam)) {
     date = new Date(parseInt(dateParam));
   } else {
+    // Try parsing as ISO string or other date string
     date = new Date(dateParam);
   }
 
-  // ❌ Validasi tanggal
+  // Validate the date
   if (!isValidDate(date)) {
     return res.json({ error: "Invalid Date" });
   }
 
-  // ✅ Return valid date
+  // Return successful response
   res.json({
     unix: date.getTime(),
     utc: date.toUTCString()
   });
 });
 
-// Serve static files (optional, kalau ada front-end)
+// Route khusus untuk handle case tanpa parameter date
+app.get('/api', (req, res) => {
+  const date = new Date();
+  res.json({
+    unix: date.getTime(),
+    utc: date.toUTCString()
+  });
+});
+
+// Serve static files
 app.use(express.static('public'));
 
-// Error handling middleware (optional)
+// Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Something went wrong!' });
