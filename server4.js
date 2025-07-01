@@ -104,31 +104,36 @@ app.get('/api/users/:_id/logs', async (req, res) => {
 
   try {
     const user = await User.findById(_id);
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
 
+    // Build query
     const query = { userId: _id };
-    const dateFilter = {};
+    if (from || to) {
+      query.date = {};
+      if (from) query.date.$gte = new Date(from);
+      if (to) query.date.$lte = new Date(to);
+    }
 
-    if (from) dateFilter.$gte = new Date(from);
-    if (to) dateFilter.$lte = new Date(to);
-    if (from || to) query.date = dateFilter;
+    let logsQuery = Exercise.find(query).select('description duration date -_id');
+    if (limit) {
+      logsQuery = logsQuery.limit(parseInt(limit));
+    }
 
-    let exercises = Exercise.find(query);
-    if (limit) exercises = exercises.limit(parseInt(limit));
+    const logs = await logsQuery.exec();
 
-    const exercisesData = await exercises.exec();
-
-    const log = exercisesData.map(ex => ({
-      description: ex.description,
-      duration: ex.duration,
-      date: new Date(ex.date).toDateString()
+    const formattedLogs = logs.map(log => ({
+      description: log.description,
+      duration: log.duration,
+      date: log.date.toDateString()
     }));
 
     res.json({
       _id: user._id,
       username: user.username,
-      count: log.length,
-      log
+      count: formattedLogs.length,
+      log: formattedLogs
     });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
