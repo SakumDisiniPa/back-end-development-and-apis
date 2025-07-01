@@ -97,7 +97,7 @@ app.post('/api/users/:_id/exercises', async (req, res) => {
   }
 });
 
-// Get exercise log
+// Get exercise log - FINAL FIX FOR REQUIREMENT #15
 app.get('/api/users/:_id/logs', async (req, res) => {
   const { _id } = req.params;
   const { from, to, limit } = req.query;
@@ -110,30 +110,39 @@ app.get('/api/users/:_id/logs', async (req, res) => {
 
     // Build query
     const query = { userId: _id };
+    const dateFilter = {};
+
+    if (from) {
+      dateFilter.$gte = new Date(from);
+    }
+    if (to) {
+      dateFilter.$lte = new Date(to);
+    }
     if (from || to) {
-      query.date = {};
-      if (from) query.date.$gte = new Date(from);
-      if (to) query.date.$lte = new Date(to);
+      query.date = dateFilter;
     }
 
-    let logsQuery = Exercise.find(query).select('description duration date -_id');
+    let exercisesQuery = Exercise.find(query)
+      .select('description duration date -_id');
+
     if (limit) {
-      logsQuery = logsQuery.limit(parseInt(limit));
+      exercisesQuery = exercisesQuery.limit(parseInt(limit));
     }
 
-    const logs = await logsQuery.exec();
+    const exercises = await exercisesQuery.exec();
 
-    const formattedLogs = logs.map(log => ({
-      description: log.description,
-      duration: log.duration,
-      date: log.date.toDateString()
+    // CRITICAL FIX: Ensure date is properly formatted as string
+    const formattedExercises = exercises.map(ex => ({
+      description: ex.description,
+      duration: ex.duration,
+      date: new Date(ex.date).toDateString() // EXACT FORMAT REQUIRED
     }));
 
     res.json({
       _id: user._id,
       username: user.username,
-      count: formattedLogs.length,
-      log: formattedLogs
+      count: formattedExercises.length,
+      log: formattedExercises
     });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
