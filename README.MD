@@ -1,7 +1,15 @@
+<<<<<<< HEAD
 ---
 
 ### ✅ `README.md`
 
+=======
+### ✅ `README.md`
+
+---
+
+````markdown
+>>>>>>> 8ec22a5 (update)
 # 📆 Timestamp Microservice API
 
 A simple microservice built with Node.js and Express that returns a timestamp in both UNIX and UTC format.
