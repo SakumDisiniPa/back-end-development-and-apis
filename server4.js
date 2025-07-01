@@ -97,33 +97,30 @@ app.post('/api/users/:_id/exercises', async (req, res) => {
   }
 });
 
-// Get exercise log 
+// Get exercise log
 app.get('/api/users/:_id/logs', async (req, res) => {
-  const { _id } = req.params;
-  const { from, to, limit } = req.query;
-
   try {
-    // Cari user terlebih dahulu
-    const user = await User.findById(_id);
+    const { _id } = req.params;
+    const { from, to, limit } = req.query;
+
+    // 1. Cari user terlebih dahulu
+    const user = await User.findById(_id).lean();
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Buat query untuk exercise
-    let exerciseQuery = { userId: _id };
-    
-    // Filter tanggal jika ada
-    if (from || to) {
-      exerciseQuery.date = {};
-      if (from) {
-        exerciseQuery.date.$gte = new Date(from);
-      }
-      if (to) {
-        exerciseQuery.date.$lte = new Date(to);
-      }
+    // 2. Buat query untuk exercise
+    const exerciseQuery = { userId: _id };
+    const dateFilter = {};
+
+    // Filter tanggal
+    if (from) dateFilter.$gte = new Date(from);
+    if (to) dateFilter.$lte = new Date(to);
+    if (Object.keys(dateFilter).length > 0) {
+      exerciseQuery.date = dateFilter;
     }
 
-    // Eksekusi query
+    // 3. Ambil data exercise
     let exercises = await Exercise.find(exerciseQuery)
       .select('description duration date -_id')
       .lean();
@@ -133,27 +130,28 @@ app.get('/api/users/:_id/logs', async (req, res) => {
       exercises = exercises.slice(0, parseInt(limit));
     }
 
-    // Format exercises
+    // 4. Format data exercise
     const log = exercises.map(ex => ({
       description: ex.description,
       duration: ex.duration,
       date: new Date(ex.date).toDateString()
     }));
 
-    // Buat response object dengan urutan yang tepat
+    // 5. Bangun response dengan urutan yang tepat
     const response = {
       _id: user._id,
-      username: user.username,
-      from: from ? new Date(from).toDateString() : undefined,
-      to: to ? new Date(to).toDateString() : undefined,
-      count: log.length,
-      log: log
+      username: user.username
     };
 
-    // Hapus field from/to jika tidak ada
-    if (!from) delete response.from;
-    if (!to) delete response.to;
+    // Tambahkan from/to jika ada
+    if (from) response.from = new Date(from).toDateString();
+    if (to) response.to = new Date(to).toDateString();
 
+    // Tambahkan count dan log
+    response.count = log.length;
+    response.log = log;
+
+    // 6. Kirim response
     res.json(response);
 
   } catch (err) {
@@ -164,7 +162,7 @@ app.get('/api/users/:_id/logs', async (req, res) => {
 
 // Homepage
 app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/views/ExerciseTracker.html');
+  res.sendFile(__dirname + '/views/index.html');
 });
 
 // Start server
