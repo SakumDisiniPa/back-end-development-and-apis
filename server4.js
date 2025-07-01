@@ -125,7 +125,6 @@ app.get('/api/users/:_id/logs', async (req, res) => {
       .select('description duration date -_id')
       .lean();
 
-    // Apply limit jika ada
     if (limit) {
       exercises = exercises.slice(0, parseInt(limit));
     }
@@ -143,11 +142,9 @@ app.get('/api/users/:_id/logs', async (req, res) => {
       username: user.username
     };
 
-    // Tambahkan from/to jika ada
     if (from) response.from = new Date(from).toDateString();
     if (to) response.to = new Date(to).toDateString();
 
-    // Tambahkan count dan log
     response.count = log.length;
     response.log = log;
 
