@@ -7,7 +7,7 @@
 
 A simple microservice built with Node.js and Express that returns a timestamp in both UNIX and UTC format.
 
-This project is part of the **Back End Development and APIs** certification from [freeCodeCamp](https://www.freecodecamp.org/).
+This project is part of the **Back End Development and APIs** certification from [freeCodeCamp](https://www.freecodecamp.org/)
 
 ---
 
