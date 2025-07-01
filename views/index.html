@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>URL Shortener Microservice</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h1 {
+      color: #333;
+    }
+    form {
+      margin: 20px 0;
+    }
+    input {
+      padding: 8px;
+      width: 300px;
+    }
+    button {
+      padding: 8px 15px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    .example {
+      background-color: #f8f9fa;
+      padding: 15px;
+      border-radius: 5px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>URL Shortener Microservice</h1>
+  <form action="/api/shorturl" method="POST">
+    <input type="text" name="url" placeholder="Enter URL to shorten" required>
+    <button type="submit">Shorten URL</button>
+  </form>
+  
+  <div class="example">
+    <h3>Example Usage:</h3>
+    <p>POST /api/shorturl - Body: { "url": "https://www.freecodecamp.org" }</p>
+    <p>GET /api/shorturl/1 - Will redirect to https://www.freecodecamp.org</p>
+  </div>
+</body>
+</html>
