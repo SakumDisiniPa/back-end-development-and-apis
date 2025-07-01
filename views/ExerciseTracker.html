@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Exercise Tracker</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h1 {
+      color: #333;
+    }
+    form {
+      margin: 20px 0;
+    }
+    input {
+      padding: 8px;
+      margin: 5px 0;
+      width: 300px;
+      display: block;
+    }
+    button {
+      padding: 8px 15px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    .example {
+      background-color: #f8f9fa;
+      padding: 15px;
+      border-radius: 5px;
+      margin-top: 20px;
+    }
+    .section {
+      margin: 30px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Exercise Tracker</h1>
+  
+  <div class="section">
+    <h2>Create a New User</h2>
+    <form action="/api/users" method="POST">
+      <input type="text" name="username" placeholder="Username" required>
+      <button type="submit">Create User</button>
+    </form>
+  </div>
+  
+  <div class="section">
+    <h2>Add Exercises</h2>
+    <form action="/api/users/:_id/exercises" method="POST" id="exerciseForm">
+      <input type="text" name="userId" placeholder="User ID*" required>
+      <input type="text" name="description" placeholder="Description*" required>
+      <input type="number" name="duration" placeholder="Duration (minutes)*" required>
+      <input type="text" name="date" placeholder="Date (yyyy-mm-dd)">
+      <button type="submit">Add Exercise</button>
+    </form>
+  </div>
+  
+  <div class="section">
+    <h2>Get Exercise Log</h2>
+    <form action="/api/users/:_id/logs" method="GET" id="logForm">
+      <input type="text" name="userId" placeholder="User ID*" required>
+      <input type="text" name="from" placeholder="From (yyyy-mm-dd)">
+      <input type="text" name="to" placeholder="To (yyyy-mm-dd)">
+      <input type="number" name="limit" placeholder="Limit">
+      <button type="submit">Get Log</button>
+    </form>
+  </div>
+  
+  <div class="example">
+    <h3>Example Usage:</h3>
+    <p>POST /api/users - Body: { "username": "fcc_test" }</p>
+    <p>POST /api/users/:_id/exercises - Body: { "description": "test", "duration": 60, "date": "1990-01-01" }</p>
+    <p>GET /api/users/:_id/logs?from=1990-01-01&to=1990-01-31&limit=5</p>
+  </div>
+  
+  <script>
+    // Simple form handling to update action URLs with userId
+    document.getElementById('exerciseForm').addEventListener('submit', function(e) {
+      const userId = this.elements.userId.value;
+      this.action = `/api/users/${userId}/exercises`;
+    });
+    
+    document.getElementById('logForm').addEventListener('submit', function(e) {
+      const userId = this.elements.userId.value;
+      const from = this.elements.from.value ? `from=${this.elements.from.value}&` : '';
+      const to = this.elements.to.value ? `to=${this.elements.to.value}&` : '';
+      const limit = this.elements.limit.value ? `limit=${this.elements.limit.value}` : '';
+      this.action = `/api/users/${userId}/logs?${from}${to}${limit}`;
+    });
+  </script>
+</body>
+</html>

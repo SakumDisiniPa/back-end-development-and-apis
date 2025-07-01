@@ -91,7 +91,7 @@ app.get('/api/shorturl/:short_url', async (req, res) => {
 
 // Homepage
 app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/views/index.html');
+  res.sendFile(__dirname + '/views/URLShortener.html');
 });
 
 // Start server
