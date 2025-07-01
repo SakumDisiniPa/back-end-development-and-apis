@@ -33,7 +33,7 @@ Returns the current time.
 
 ---
 
-### 🔹 GET `/api/:date`
+### 🔹 GET `/api/date`
 
 #### ✅ Example with date string:
 
