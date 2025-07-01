@@ -140,21 +140,19 @@ app.get('/api/users/:_id/logs', async (req, res) => {
       date: new Date(ex.date).toDateString()
     }));
 
-    // Buat response object
+    // Buat response object dengan urutan yang tepat
     const response = {
       _id: user._id,
       username: user.username,
-      count: exercises.length,
+      from: from ? new Date(from).toDateString() : undefined,
+      to: to ? new Date(to).toDateString() : undefined,
+      count: log.length,
       log: log
     };
 
-    // Tambahkan from dan to jika ada
-    if (from) {
-      response.from = new Date(from).toDateString();
-    }
-    if (to) {
-      response.to = new Date(to).toDateString();
-    }
+    // Hapus field from/to jika tidak ada
+    if (!from) delete response.from;
+    if (!to) delete response.to;
 
     res.json(response);
 
