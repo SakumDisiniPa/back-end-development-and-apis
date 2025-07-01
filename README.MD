@@ -1,5 +1,3 @@
-### ✅ `README.md`
-
 ---
 
 ````markdown
@@ -7,7 +5,7 @@
 
 A simple microservice built with Node.js and Express that returns a timestamp in both UNIX and UTC format.
 
-This project is part of the **Back End Development and APIs** certification from [freeCodeCamp](https://www.freecodecamp.org/)
+This project is part of the **Back End Development and APIs** certification from [freeCodeCamp](https://www.freecodecamp.org/).
 
 ---
 
@@ -26,6 +24,7 @@ This project is part of the **Back End Development and APIs** certification from
 Returns the current time.
 
 **Response:**
+
 ```json
 {
   "unix": 1719816792591,
@@ -35,9 +34,9 @@ Returns the current time.
 
 ---
 
-### 🔹 GET `/api/date`
+### 🔹 GET `/api/:date`
 
-#### Example with date string:
+#### ✅ Example with date string:
 
 `/api/2015-12-25`
 
@@ -50,7 +49,7 @@ Returns the current time.
 }
 ```
 
-#### Example with UNIX timestamp:
+#### ✅ Example with UNIX timestamp:
 
 `/api/1451001600000`
 
@@ -63,7 +62,7 @@ Returns the current time.
 }
 ```
 
-#### Invalid date:
+#### ❌ Invalid date:
 
 `/api/invalid-date`
 
@@ -126,12 +125,16 @@ node server.js
 ## 👨‍💻 Author
 
 **Dimas Dwi Agustianto**
-GitHub: [SakumDisiniPa](https://github.com/SakumDisiniPa)
+GitHub: [@SakumDisiniPa](https://github.com/SakumDisiniPa)
 
 ---
 
 ## 📜 License
 
 This project is open-source and available under the [MIT License](LICENSE).
+
+```
+
+---
 
 ```
