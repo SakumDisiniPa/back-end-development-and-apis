@@ -1,18 +1,25 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+require('dotenv').config();
+
 const app = express();
 
 // Middleware
 app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json()); // Untuk parsing application/json
+app.use(express.urlencoded({ extended: true })); 
+
+// Serve static files (like index.html)
+app.use(express.static('public'));
 
 // Database setup
-mongoose.connect('mongodb://localhost:27017/exercisetracker', {
+mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true
-});
+})
+.then(() => console.log('MongoDB Connected'))
+.catch(err => console.error('MongoDB connection error:', err));
 
 // User Schema
 const userSchema = new mongoose.Schema({
@@ -23,7 +30,7 @@ const User = mongoose.model('User', userSchema);
 
 // Exercise Schema
 const exerciseSchema = new mongoose.Schema({
-  userId: { type: String, required: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // Ubah ke ObjectId
   description: { type: String, required: true },
   duration: { type: Number, required: true },
   date: { type: Date, default: Date.now }
@@ -31,25 +38,40 @@ const exerciseSchema = new mongoose.Schema({
 
 const Exercise = mongoose.model('Exercise', exerciseSchema);
 
+// Homepage route
+app.get('/', (req, res) => {
+  res.sendFile(__dirname + '/views/index.html');
+});
+
 // Create new user
 app.post('/api/users', async (req, res) => {
   const { username } = req.body;
 
+  if (!username) {
+    return res.status(400).json({ error: 'Username is required' });
+  }
+
   try {
     const user = new User({ username });
-    await user.save();
-    res.json({ username: user.username, _id: user._id });
+    const savedUser = await user.save();
+    res.json({ username: savedUser.username, _id: savedUser._id });
   } catch (err) {
-    res.status(400).json({ error: 'Username already taken' });
+    // Handle duplicate username error (MongoDB error code 11000)
+    if (err.code === 11000) {
+      return res.status(400).json({ error: 'Username already taken' });
+    }
+    console.error('Error creating user:', err);
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
 // Get all users
 app.get('/api/users', async (req, res) => {
   try {
-    const users = await User.find({}, 'username _id');
+    const users = await User.find({}, 'username _id'); // Select only username and _id
     res.json(users);
   } catch (err) {
+    console.error('Error getting users:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -67,32 +89,47 @@ app.post('/api/users/:_id/exercises', async (req, res) => {
     }
 
     // Validate exercise data
-    if (!description || !duration) {
-      return res.status(400).json({ error: 'Description and duration are required' });
+    if (!description) {
+      return res.status(400).json({ error: 'Description is required' });
+    }
+    
+    const parsedDuration = parseInt(duration);
+    if (isNaN(parsedDuration)) {
+      return res.status(400).json({ error: 'Duration must be a number' });
     }
 
-    // Parse date or use current date
-    const exerciseDate = date ? new Date(date) : new Date();
+    // Parse date or use current date, with validation
+    let exerciseDate;
+    if (date) {
+      const parsedDate = new Date(date);
+      if (isNaN(parsedDate.getTime())) {
+        return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+      }
+      exerciseDate = parsedDate;
+    } else {
+      exerciseDate = new Date();
+    }
 
     // Create exercise
     const exercise = new Exercise({
       userId: _id,
       description,
-      duration: parseInt(duration),
+      duration: parsedDuration,
       date: exerciseDate
     });
 
-    await exercise.save();
+    const savedExercise = await exercise.save();
 
-    // Return user with exercise data
+    // Return user with exercise data, formatted as required
     res.json({
       _id: user._id,
       username: user.username,
-      description: exercise.description,
-      duration: exercise.duration,
-      date: exercise.date.toDateString()
+      description: savedExercise.description,
+      duration: savedExercise.duration,
+      date: savedExercise.date.toDateString() // Ensure date is formatted here
     });
   } catch (err) {
+    console.error('Error adding exercise:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -114,8 +151,23 @@ app.get('/api/users/:_id/logs', async (req, res) => {
     const dateFilter = {};
 
     // Filter tanggal
-    if (from) dateFilter.$gte = new Date(from);
-    if (to) dateFilter.$lte = new Date(to);
+    if (from) {
+      const fromDate = new Date(from);
+      if (!isNaN(fromDate.getTime())) {
+        dateFilter.$gte = fromDate;
+      } else {
+        return res.status(400).json({ error: 'Invalid "from" date format' });
+      }
+    }
+    if (to) {
+      const toDate = new Date(to);
+      if (!isNaN(toDate.getTime())) {
+        dateFilter.$lte = toDate;
+      } else {
+        return res.status(400).json({ error: 'Invalid "to" date format' });
+      }
+    }
+
     if (Object.keys(dateFilter).length > 0) {
       exerciseQuery.date = dateFilter;
     }
@@ -125,41 +177,45 @@ app.get('/api/users/:_id/logs', async (req, res) => {
       .select('description duration date -_id')
       .lean();
 
+    // Apply limit if provided
     if (limit) {
-      exercises = exercises.slice(0, parseInt(limit));
+      const parsedLimit = parseInt(limit);
+      if (!isNaN(parsedLimit) && parsedLimit > 0) {
+        exercises = exercises.slice(0, parsedLimit);
+      }
     }
 
     // 4. Format data exercise
-    const log = exercises.map(ex => ({
-      description: ex.description,
-      duration: ex.duration,
-      date: new Date(ex.date).toDateString()
-    }));
+    const log = exercises.map(ex => {
+      const exerciseDate = new Date(ex.date);
+      let formattedDate;
+      if (isNaN(exerciseDate.getTime())) {
+        formattedDate = "Invalid Date"; // Fallback
+      } else {
+        formattedDate = exerciseDate.toDateString();
+      }
+      return {
+        description: ex.description,
+        duration: ex.duration,
+        date: formattedDate
+      };
+    });
 
-    // 5. Bangun response dengan urutan yang tepat
+    // 5. Bangun response sesuai format freeCodeCamp
     const response = {
       _id: user._id,
-      username: user.username
+      username: user.username,
+      count: log.length,
+      log: log,
     };
-
-    if (from) response.from = new Date(from).toDateString();
-    if (to) response.to = new Date(to).toDateString();
-
-    response.count = log.length;
-    response.log = log;
 
     // 6. Kirim response
     res.json(response);
 
   } catch (err) {
-    console.error(err);
+    console.error('Error getting exercise log:', err);
     res.status(500).json({ error: 'Server error' });
   }
-});
-
-// Homepage
-app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/views/index.html');
 });
 
 // Start server
